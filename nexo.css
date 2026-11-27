@@ -2531,169 +2531,79 @@ button:active {
     }
 }
 
-/* WYSZUKIWARKA */
-
-.site-search {
+.search-container {
     position: relative;
+    width: 230px;
+    z-index: 10000;
 }
 
-#search-toggle {
-    background: transparent;
-    border: none;
-    font-size: 22px;
-    cursor: pointer;
-    color: white;
-}
-
-.search-box {
-    display: none;
-    position: absolute;
-    top: 55px;
-    right: 0;
-    width: 350px;
-    max-width: calc(100vw - 30px);
+#search-form {
+    display: flex;
     background: white;
-    padding: 15px;
-    border-radius: 10px;
-    box-shadow: 0 5px 25px rgba(0,0,0,0.2);
-    z-index: 99999;
+    border: 2px solid #17345b;
+    border-radius: 25px;
+    overflow: hidden;
 }
 
-.search-box.active {
-    display: block;
-}
-
-#site-search-input {
+#search-input {
     width: 100%;
-    padding: 12px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 16px;
-    box-sizing: border-box;
+    min-width: 0;
+    padding: 10px;
+    border: none;
+    outline: none;
 }
 
-#search-close {
-    position: absolute;
-    top: -12px;
-    right: -12px;
+#search-form button {
     background: #17345b;
     color: white;
     border: none;
-    border-radius: 50%;
-    width: 28px;
-    height: 28px;
+    padding: 10px 14px;
     cursor: pointer;
 }
 
 #search-results {
-    max-height: 300px;
+    display: none;
+    position: absolute;
+    top: 45px;
+    left: 0;
+    width: 320px;
+    max-width: 85vw;
+    max-height: 350px;
     overflow-y: auto;
-    margin-top: 10px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 5px 20px #0003;
 }
 
 .search-result {
-    padding: 10px;
-    border-bottom: 1px solid #eee;
-    cursor: pointer;
+    display: block;
+    padding: 13px;
     color: #17345b;
+    text-decoration: none;
+    border-bottom: 1px solid #eee;
 }
 
 .search-result:hover {
-    background: #101318;
-}
-
-.search-result strong {
-    display: block;
+    background: #f0f3f8;
 }
 
 .search-result small {
+    display: block;
     color: #777;
-}
-
-@media(max-width: 600px) {
-    .search-box {
-        position: fixed;
-        top: 80px;
-        left: 15px;
-        right: 15px;
-        width: auto;
-    }
-}
-
-/* POPRAWKI WYSZUKIWARKI */
-
-#search-results {
-    color: #222 !important;
-    background: white !important;
-}
-
-.search-result {
-    color: #17345b !important;
-    background: white !important;
-    padding: 12px;
-    border-bottom: 1px solid #ddd;
-    cursor: pointer;
-}
-
-.search-result strong {
-    color: #17345b !important;
-}
-
-.search-result small {
-    color: #555 !important;
-    display: block;
     margin-top: 5px;
 }
 
-.search-result:hover {
-    background: #edf2f8 !important;
-}
-
-.search-no-results {
-    color: #222 !important;
-    background: #f1f1f1 !important;
-    padding: 15px;
-    border-radius: 6px;
-    font-weight: bold;
-}
-
-.search-loading {
-    color: #17345b !important;
-    padding: 12px;
-}
-
-#search-box {
-    display: none;
-}
-
-#search-box.active {
-    display: block;
-}
-
-.search-result {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 12px;
-    background: white;
-    color: #17345b;
-    border-bottom: 1px solid #ddd;
-    cursor: pointer;
-}
-
-.search-result:hover {
-    background: #edf3fa;
-}
-
-.search-result small {
-    line-height: 1.5;
-}
-
 .search-highlight {
-    background: #ffdf70 !important;
-    color: #17345b !important;
-    padding: 3px;
-    border-radius: 4px;
-    outline: 2px solid #e5a900;
+    background: #fff0b3;
+    outline: 8px solid #fff0b3;
+    border-radius: 5px;
 }
+
+@media(max-width: 900px) {
+    .search-container {
+        width: 100%;
+        max-width: 350px;
+    }
+}
+
 
