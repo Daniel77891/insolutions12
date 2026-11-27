@@ -2662,3 +2662,38 @@ button:active {
     padding: 12px;
 }
 
+#search-box {
+    display: none;
+}
+
+#search-box.active {
+    display: block;
+}
+
+.search-result {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px;
+    background: white;
+    color: #17345b;
+    border-bottom: 1px solid #ddd;
+    cursor: pointer;
+}
+
+.search-result:hover {
+    background: #edf3fa;
+}
+
+.search-result small {
+    line-height: 1.5;
+}
+
+.search-highlight {
+    background: #ffdf70 !important;
+    color: #17345b !important;
+    padding: 3px;
+    border-radius: 4px;
+    outline: 2px solid #e5a900;
+}
+
