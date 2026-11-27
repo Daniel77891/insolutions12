@@ -103,30 +103,27 @@
             <button type="button" onclick="changeLanguage('en')">EN</button>
             <button type="button" onclick="changeLanguage('de')">DE</button>
 
+</div>
 
-            
 <div class="site-search">
-    <button id="search-toggle" aria-label="Otwórz wyszukiwarkę">
-        🔍
-    </button>
+    <button type="button" id="search-toggle">🔍</button>
 
-    <div id="search-box" class="search-box">
-        <input
-            type="search"
-            id="site-search-input"
-            placeholder="Czego szukasz?"
-            autocomplete="off"
-        >
-
-        <button id="search-close" aria-label="Zamknij">
-            ✕
-        </button>
+    <div id="search-box">
+        <div class="search-header">
+            <input
+                type="search"
+                id="site-search-input"
+                placeholder="Wpisz szukaną frazę..."
+            >
+            <button type="button" id="search-close">✕</button>
+        </div>
 
         <div id="search-results"></div>
     </div>
 </div>
 
-        </div>
+</div>
+
 
 
 
@@ -971,7 +968,10 @@ observer.observe(document.querySelector(".stats-section"));
 <div id="accessibility-panel" aria-label="Panel dostępności" role="region" style="position:fixed; top:50%; left:0; transform:translateY(-50%);
   background:#17345b; padding:0.5em; border-radius:0 8px 8px 0; z-index:100000; display:flex; flex-direction:column; gap:0.4em;">
 
-
+<button id="btn-sign-language" aria-label="Przełącz tłumaczenie na język migowy" aria-pressed="false" title="Tłumaczenie na język migowy"
+    style="background:transparent; color:white; border:none; cursor:pointer; width:48px; height:48px; font-size:22px; border-radius:4px; display:flex; justify-content:center; align-items:center;">
+    🧏‍♂️
+  </button>
 
   <button id="btn-contrast" aria-label="Przełącz tryb wysokiego kontrastu" aria-pressed="false" title="Wysoki kontrast"
     style="background:transparent; color:white; border:none; cursor:pointer; width:48px; height:48px; font-size:22px; border-radius:4px; display:flex; justify-content:center; align-items:center;">
@@ -999,7 +999,10 @@ observer.observe(document.querySelector(".stats-section"));
   style="display:none; position:fixed; bottom:0; left:60px; background:white; border:2px solid #17345b; z-index:100001; width:320px; height:240px; box-shadow:0 4px 15px rgba(0,0,0,0.3); border-radius:8px; padding:0.5em;">
   <button id="btn-close-sign-language" class="close" aria-label="Zamknij tłumaczenie języka migowego"
     style="position:absolute; top:4px; right:8px; background:transparent; border:none; font-size:20px; cursor:pointer; color:#17345b;">✖</button>
-  
+  <video controls width="100%" height="100%">
+    <source src="twoj-film-migowy.mp4" type="video/mp4" />
+    Przeglądarka nie obsługuje odtwarzania video.
+  </video>
 </div>
 
 <!-- Przycisk powrotu na górę -->
@@ -1600,203 +1603,264 @@ backToTop.addEventListener("click", function() {
 });
 </script>
 <script>
-const searchToggle = document.getElementById("search-toggle");
-const searchBox = document.getElementById("search-box");
-const searchInput = document.getElementById("site-search-input");
-const searchClose = document.getElementById("search-close");
-const searchResults = document.getElementById("search-results");
 
-const pages = [
-    "index.html",
-    "oferta.html",
-    "wdrozenia.html",
-    "kontakt.html",
-    "kalkulator.html",
-    "polityka.html",
-    "prawo.html"
-];
+document.addEventListener("DOMContentLoaded", () => {
 
-let pageContents = [];
+    const PAGES = [
+        "index.html",
+        "oferta.html",
+        "wdrozenia.html",
+        "kontakt.html",
+        "kalkulator.html",
+        "polityka.html",
+        "prawo.html"
+    ];
 
-function normalizeText(text) {
-    return text
-        .toLocaleLowerCase("pl")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-}
+    const toggle = document.getElementById("search-toggle");
+    const box = document.getElementById("search-box");
+    const input = document.getElementById("site-search-input");
+    const close = document.getElementById("search-close");
+    const results = document.getElementById("search-results");
 
-// Pobieranie podstron
-async function loadPages() {
+    if (!toggle || !box || !input || !close || !results) return;
 
-    searchResults.innerHTML =
-        '<div class="search-loading">Ładowanie stron...</div>';
+    let pages = [];
+    let loaded = false;
 
-    const results = await Promise.all(
-        pages.map(async page => {
+    const normalize = text =>
+        text.toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
 
-            try {
-                const response = await fetch(page);
+    // Otwieranie wyszukiwarki
 
-                if (!response.ok) {
-                    throw new Error("HTTP " + response.status);
-                }
+    toggle.addEventListener("click", () => {
+        box.classList.add("active");
+        input.focus();
+    });
 
-                const html = await response.text();
+    // Zamykanie
 
-                const doc = new DOMParser().parseFromString(
-                    html,
-                    "text/html"
-                );
+    close.addEventListener("click", () => {
+        box.classList.remove("active");
+    });
 
-                // Usuwamy skrypty i style z treści
-                doc.querySelectorAll(
-                    "script, style, noscript"
-                ).forEach(el => el.remove());
+    // Skrót CTRL + F
 
-                return {
-                    page: page,
-                    title: doc.title || page,
-                    content: doc.body.innerText || "",
-                    html: html
-                };
+    document.addEventListener("keydown", event => {
 
-            } catch (error) {
+        if ((event.ctrlKey || event.metaKey) &&
+            event.key.toLowerCase() === "f") {
 
-                console.error("Błąd strony:", page, error);
+            event.preventDefault();
+            box.classList.add("active");
+            input.focus();
+        }
 
-                return null;
-            }
-        })
-    );
-
-    pageContents = results.filter(Boolean);
-
-    searchResults.innerHTML = "";
-
-    if (pageContents.length === 0) {
-        searchResults.innerHTML =
-            '<div class="search-no-results">Nie udało się pobrać stron. Sprawdź adresy i uruchom stronę przez serwer WWW.</div>';
-    }
-}
-
-// Otwieranie
-function openSearch() {
-    searchBox.classList.add("active");
-    searchInput.focus();
-}
-
-function closeSearch() {
-    searchBox.classList.remove("active");
-    searchInput.value = "";
-    searchResults.innerHTML = "";
-}
-
-searchToggle.addEventListener("click", openSearch);
-searchClose.addEventListener("click", closeSearch);
-
-// Skróty klawiszowe
-document.addEventListener("keydown", event => {
-
-    if (
-        (event.ctrlKey || event.metaKey) &&
-        ["f", "k"].includes(event.key.toLowerCase())
-    ) {
-        event.preventDefault();
-        openSearch();
-    }
-
-    if (event.key === "Escape") {
-        closeSearch();
-    }
-});
-
-// Wyszukiwanie
-searchInput.addEventListener("input", () => {
-
-    const query = normalizeText(searchInput.value.trim());
-
-    searchResults.innerHTML = "";
-
-    if (query.length < 2) return;
-
-    if (pageContents.length === 0) {
-        searchResults.innerHTML =
-            '<div class="search-no-results">Brak załadowanych podstron.</div>';
-        return;
-    }
-
-    let found = 0;
-
-    pageContents.forEach(item => {
-
-        const normalizedContent = normalizeText(item.content);
-
-        let position = 0;
-        let occurrences = 0;
-
-        while (
-            (position = normalizedContent.indexOf(query, position)) !== -1
-        ) {
-
-            const start = Math.max(0, position - 70);
-            const end = Math.min(
-                item.content.length,
-                position + query.length + 100
-            );
-
-            const excerpt = item.content
-                .substring(start, end)
-                .replace(/\s+/g, " ");
-
-            const result = document.createElement("div");
-            result.className = "search-result";
-
-            const title = document.createElement("strong");
-            title.textContent = item.title;
-
-            const description = document.createElement("small");
-            description.textContent = "..." + excerpt + "...";
-
-            result.append(title, description);
-
-            result.addEventListener("click", () => {
-
-                window.location.href =
-                    item.page +
-                    "?q=" + encodeURIComponent(searchInput.value.trim()) +
-                    "&n=" + occurrences;
-
-            });
-
-            searchResults.appendChild(result);
-
-            found++;
-            occurrences++;
-            position += query.length;
-
-            // Maksymalnie 10 wyników z jednej strony
-            if (occurrences >= 10) break;
+        if (event.key === "Escape") {
+            box.classList.remove("active");
         }
 
     });
 
-    if (found === 0) {
+    // Pobieranie wszystkich podstron
 
-        const message = document.createElement("div");
+    async function loadPages() {
 
-        message.className = "search-no-results";
-        message.textContent =
-            'Nie znaleziono wyników dla: "' +
-            searchInput.value.trim() + '"';
+        results.textContent = "Ładowanie stron...";
 
-        searchResults.appendChild(message);
+        const loadedPages = await Promise.all(
+            PAGES.map(async page => {
+
+                try {
+
+                    const response = await fetch(page);
+
+                    if (!response.ok) return null;
+
+                    const html = await response.text();
+
+                    const doc = new DOMParser().parseFromString(
+                        html,
+                        "text/html"
+                    );
+
+                    const elements = doc.querySelectorAll(
+                        "main p, main h1, main h2, main h3, main h4, main li, " +
+                        "section p, section h1, section h2, section h3, section h4, section li, " +
+                        "article p, article h2, article h3, article h4, article li"
+                    );
+
+                    return {
+                        page,
+                        title: doc.title || page,
+                        fragments: Array.from(elements)
+                            .map(element => element.textContent.trim())
+                            .filter(text => text.length > 2)
+                    };
+
+                } catch (error) {
+                    console.error("Błąd:", page, error);
+                    return null;
+                }
+
+            })
+        );
+
+        pages = loadedPages.filter(Boolean);
+        loaded = true;
+
+        search();
 
     }
 
-});
+    // Wyszukiwanie
 
-// Start
-loadPages();
-    </script>
+    function search() {
+
+        const query = input.value.trim();
+
+        results.replaceChildren();
+
+        if (query.length < 2) return;
+
+        if (!loaded) {
+            results.textContent = "Ładowanie stron...";
+            return;
+        }
+
+        const normalizedQuery = normalize(query);
+
+        let count = 0;
+
+        pages.forEach(page => {
+
+            page.fragments.forEach(fragment => {
+
+                const normalizedText = normalize(fragment);
+
+                if (!normalizedText.includes(normalizedQuery)) return;
+
+                const result = document.createElement("div");
+                result.className = "search-result";
+                result.tabIndex = 0;
+
+                const title = document.createElement("strong");
+                title.textContent = page.title;
+
+                const description = document.createElement("small");
+                description.textContent = fragment.substring(0, 180);
+
+                result.append(title, description);
+
+                const open = () => {
+
+                    sessionStorage.setItem(
+                        "insolutions-search",
+                        JSON.stringify({
+                            text: fragment,
+                            query: query
+                        })
+                    );
+
+                    location.href = page;
+                };
+
+                result.addEventListener("click", open);
+
+                result.addEventListener("keydown", event => {
+                    if (event.key === "Enter") open();
+                });
+
+                results.appendChild(result);
+
+                count++;
+
+            });
+
+        });
+
+        if (!count) {
+            results.textContent = "Nie znaleziono wyników.";
+        }
+
+    }
+
+    input.addEventListener("input", search);
+
+    // Podświetlanie znalezionego tekstu
+
+    function restoreSearch() {
+
+        let saved;
+
+        try {
+            saved = JSON.parse(
+                sessionStorage.getItem("insolutions-search")
+            );
+        } catch {
+            return;
+        }
+
+        if (!saved) return;
+
+        sessionStorage.removeItem("insolutions-search");
+
+        const elements = document.querySelectorAll(
+            "main p, main h1, main h2, main h3, main h4, main li, " +
+            "section p, section h1, section h2, section h3, section h4, section li, " +
+            "article p, article h2, article h3, article h4, article li"
+        );
+
+        const target = Array.from(elements).find(element =>
+            element.textContent.trim() === saved.text
+        );
+
+        if (!target) return;
+
+        const walker = document.createTreeWalker(
+            target,
+            NodeFilter.SHOW_TEXT
+        );
+
+        const node = walker.nextNode();
+
+        if (!node) return;
+
+        const normalized = normalize(node.textContent);
+        const position = normalized.indexOf(normalize(saved.query));
+
+        if (position < 0) return;
+
+        const range = document.createRange();
+
+        range.setStart(node, position);
+        range.setEnd(node, position + saved.query.length);
+
+        const mark = document.createElement("mark");
+        mark.className = "search-highlight";
+
+        try {
+            range.surroundContents(mark);
+
+            setTimeout(() => {
+                mark.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center"
+                });
+            }, 300);
+
+        } catch (error) {
+            target.scrollIntoView({ behavior: "smooth" });
+        }
+
+    }
+
+    restoreSearch();
+    loadPages();
+
+});
+    
+</script>
 </body>
 </html>
