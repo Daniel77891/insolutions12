@@ -1604,8 +1604,11 @@ backToTop.addEventListener("click", function() {
 </script>
 <script>
 
-
 document.addEventListener("DOMContentLoaded", function () {
+
+    // =====================================
+    // KONFIGURACJA
+    // =====================================
 
     const PAGES = [
         "index.html",
@@ -1631,20 +1634,28 @@ document.addEventListener("DOMContentLoaded", function () {
     let database = [];
     let loaded = false;
 
+    // =====================================
+    // NORMALIZACJA TEKSTU
+    // =====================================
+
     function normalize(text) {
-        return text.toLowerCase()
+        return text.toLocaleLowerCase("pl")
             .normalize("NFD")
             .replace(/[\u0300-\u036f]/g, "");
     }
 
+    // =====================================
     // OTWIERANIE WYSZUKIWARKI
+    // =====================================
 
     toggle.addEventListener("click", function () {
         box.classList.add("active");
         input.focus();
     });
 
+    // =====================================
     // ZAMYKANIE
+    // =====================================
 
     close.addEventListener("click", function () {
         box.classList.remove("active");
@@ -1666,20 +1677,27 @@ document.addEventListener("DOMContentLoaded", function () {
 
     });
 
+    // =====================================
+    // USTALANIE KATALOGU GITHUB PAGES
+    // =====================================
+
+    const baseURL = new URL(".", window.location.href);
+
+    // =====================================
     // POBIERANIE PODSTRON
+    // =====================================
 
     async function loadPages() {
 
         results.textContent = "Ładowanie stron...";
 
-        const pages = [...new Set(PAGES)];
-
         const responses = await Promise.all(
-            pages.map(async page => {
+            PAGES.map(async page => {
 
                 try {
 
-                    const url = new URL(page, window.location.href);
+                    const url = new URL(page, baseURL);
+
                     const response = await fetch(url.href);
 
                     if (!response.ok) {
@@ -1694,8 +1712,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     );
 
                     const elements = doc.querySelectorAll(
-                        "main h1, main h2, main h3, main h4, main p, main li, " +
-                        "section h1, section h2, section h3, section h4, section p, section li, " +
+                        "main h1, main h2, main h3, main h4, main h5, main h6, main p, main li, " +
+                        "section h1, section h2, section h3, section h4, section h5, section h6, section p, section li, " +
                         "article h1, article h2, article h3, article h4, article p, article li"
                     );
 
@@ -1706,10 +1724,17 @@ document.addEventListener("DOMContentLoaded", function () {
                         const text = element.textContent.trim();
 
                         if (text.length > 2) {
-                            fragments.push(text);
+
+                            fragments.push({
+                                text: text,
+                                id: element.id || ""
+                            });
+
                         }
 
                     });
+
+                    console.log("Zaindeksowano:", page);
 
                     return {
                         page: url.href,
@@ -1720,6 +1745,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 } catch (error) {
 
                     console.error("Błąd pobierania:", page, error);
+
                     return null;
 
                 }
@@ -1728,15 +1754,18 @@ document.addEventListener("DOMContentLoaded", function () {
         );
 
         database = responses.filter(Boolean);
+
         loaded = true;
 
-        console.log("Zaindeksowane strony:", database);
+        console.log("Baza wyszukiwarki:", database);
 
         search();
 
     }
 
+    // =====================================
     // WYSZUKIWANIE
+    // =====================================
 
     function search() {
 
@@ -1747,7 +1776,9 @@ document.addEventListener("DOMContentLoaded", function () {
         if (query.length < 2) return;
 
         if (!loaded) {
+
             results.textContent = "Ładowanie stron...";
+
             return;
         }
 
@@ -1759,42 +1790,53 @@ document.addEventListener("DOMContentLoaded", function () {
 
             page.fragments.forEach(fragment => {
 
-                if (!normalize(fragment).includes(normalizedQuery)) {
+                if (!normalize(fragment.text).includes(normalizedQuery)) {
                     return;
                 }
 
                 const result = document.createElement("div");
+
                 result.className = "search-result";
                 result.tabIndex = 0;
 
                 const title = document.createElement("strong");
+
                 title.textContent = page.title;
 
                 const description = document.createElement("small");
-                description.textContent = fragment.substring(0, 180);
+
+                description.textContent =
+                    fragment.text.substring(0, 180);
 
                 result.append(title, description);
+
+                // =====================================
+                // PRZEJŚCIE DO WYNIKU
+                // =====================================
 
                 function openResult() {
 
                     sessionStorage.setItem(
                         "insolutions-search",
                         JSON.stringify({
-                            text: fragment,
-                            query: query
+                            text: fragment.text,
+                            query: query,
+                            id: fragment.id
                         })
                     );
 
-                    window.location.assign(page.page);
+                    window.location.href = page.page;
 
                 }
 
                 result.addEventListener("click", openResult);
 
                 result.addEventListener("keydown", function (event) {
+
                     if (event.key === "Enter") {
                         openResult();
                     }
+
                 });
 
                 results.appendChild(result);
@@ -1806,28 +1848,36 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         if (count === 0) {
+
             results.textContent = "Nie znaleziono wyników.";
+
         }
 
     }
 
     input.addEventListener("input", search);
 
-    // PRZYWRACANIE WYSZUKIWANIA I PODŚWIETLANIE
+    // =====================================
+    // ODNAJDYWANIE FRAGMENTU PO PRZEJŚCIU
+    // =====================================
 
     function restoreSearch() {
 
         let saved;
 
         try {
+
             saved = JSON.parse(
                 sessionStorage.getItem("insolutions-search")
             );
+
         } catch (error) {
+
             return;
+
         }
 
-        if (!saved || !saved.text || !saved.query) return;
+        if (!saved) return;
 
         sessionStorage.removeItem("insolutions-search");
 
@@ -1835,19 +1885,37 @@ document.addEventListener("DOMContentLoaded", function () {
         const query = normalize(saved.query);
 
         const elements = document.querySelectorAll(
-            "main h1, main h2, main h3, main h4, main p, main li, " +
-            "section h1, section h2, section h3, section h4, section p, section li, " +
+            "main h1, main h2, main h3, main h4, main h5, main h6, main p, main li, " +
+            "section h1, section h2, section h3, section h4, section h5, section h6, section p, section li, " +
             "article h1, article h2, article h3, article h4, article p, article li"
         );
 
-        const target = Array.from(elements).find(element =>
-            normalize(element.textContent.trim()) === expected
-        );
+        let target = null;
+
+        for (const element of elements) {
+
+            if (
+                normalize(element.textContent.trim()) === expected
+            ) {
+
+                target = element;
+                break;
+
+            }
+
+        }
 
         if (!target) {
-            console.error("Nie znaleziono tekstu:", saved.text);
+
+            console.error("Nie odnaleziono fragmentu:", saved.text);
+
             return;
+
         }
+
+        // =====================================
+        // SZUKANIE FRAZY W TEKŚCIE
+        // =====================================
 
         const walker = document.createTreeWalker(
             target,
@@ -1855,13 +1923,17 @@ document.addEventListener("DOMContentLoaded", function () {
         );
 
         const nodes = [];
+
         let node;
 
         while ((node = walker.nextNode())) {
+
             nodes.push(node);
+
         }
 
         let normalizedText = "";
+
         const positions = [];
 
         nodes.forEach(textNode => {
@@ -1873,10 +1945,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 const chars = normalize(value[i]);
 
                 for (let j = 0; j < chars.length; j++) {
+
                     positions.push({
                         node: textNode,
                         offset: i
                     });
+
                 }
 
                 normalizedText += chars;
@@ -1888,24 +1962,34 @@ document.addEventListener("DOMContentLoaded", function () {
         const position = normalizedText.indexOf(query);
 
         if (position === -1) {
+
             target.scrollIntoView({
                 behavior: "smooth",
                 block: "center"
             });
+
             return;
+
         }
 
         const start = positions[position];
+
         const end = positions[position + query.length - 1];
 
         if (!start || !end) return;
 
+        // =====================================
+        // PODŚWIETLANIE
+        // =====================================
+
         const range = document.createRange();
 
         range.setStart(start.node, start.offset);
+
         range.setEnd(end.node, end.offset + 1);
 
         const mark = document.createElement("mark");
+
         mark.className = "search-highlight";
 
         try {
@@ -1929,9 +2013,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
     }
 
-    // START
+    // =====================================
+    // URUCHOMIENIE
+    // =====================================
 
     restoreSearch();
+
     loadPages();
 
 });
