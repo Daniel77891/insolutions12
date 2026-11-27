@@ -98,32 +98,27 @@
 
         </nav>
 
+
+<div class="search-container">
+    <form id="search-form">
+        <input
+            type="search"
+            id="search-input"
+            placeholder="Szukaj na stronie..."
+            aria-label="Szukaj"
+        >
+        <button type="submit">🔍</button>
+    </form>
+
+    <div id="search-results"></div>
+</div>
+
+
         <div class="language-switcher" aria-label="Wybór języka">
             <button type="button" onclick="changeLanguage('pl')">PL</button>
             <button type="button" onclick="changeLanguage('en')">EN</button>
             <button type="button" onclick="changeLanguage('de')">DE</button>
-
-</div>
-
-<div class="site-search">
-    <button type="button" id="search-toggle">🔍</button>
-
-    <div id="search-box">
-        <div class="search-header">
-            <input
-                type="search"
-                id="site-search-input"
-                placeholder="Wpisz szukaną frazę..."
-            >
-            <button type="button" id="search-close">✕</button>
         </div>
-
-        <div id="search-results"></div>
-    </div>
-</div>
-
-</div>
-
 
 
 
@@ -270,7 +265,19 @@
     </div>
   </div>
 </section>
+<h2 id="osiagniecia">Nasze osiągnięcia</h2>
 
+<h2 id="subiekt">Subiekt nexo PRO – więcej możliwości</h2>
+
+<h2 id="porownanie">Subiekt nexo a Subiekt nexo PRO</h2>
+
+<h2 id="rozwiazania">Nasze rozwiązania</h2>
+
+<h2 id="dopasowanie">Rozwiązania dopasowane do potrzeb</h2>
+
+<h2 id="korzysci">Dlaczego warto z nami współpracować?</h2>
+
+<h2 id="opinie">Opinie naszych klientów</h2>
 <style>
 .stats-section {
   padding: 70px 20px;
@@ -1602,405 +1609,9 @@ backToTop.addEventListener("click", function() {
   });
 });
 </script>
-<script>
 
+<script src="search-index.js"></script>
+<script src="search.js"></script>
 
-document.addEventListener("DOMContentLoaded", function () {
-
-    // =========================================
-    // KONFIGURACJA STRON
-    // =========================================
-
-    const BASE = "/insolutions12/";
-
-    const PAGES = [
-        "index.html",
-        "oferta.html",
-        "wdrozenia.html",
-        "kontakt.html",
-        "kalkulator.html",
-        "polityka.html",
-        "prawo.html"
-    ];
-
-    const toggle = document.getElementById("search-toggle");
-    const box = document.getElementById("search-box");
-    const input = document.getElementById("site-search-input");
-    const close = document.getElementById("search-close");
-    const results = document.getElementById("search-results");
-
-    if (!toggle || !box || !input || !close || !results) {
-        console.error("Brak elementów wyszukiwarki!");
-        return;
-    }
-
-    let database = [];
-    let loaded = false;
-
-    const normalize = text =>
-        text.toLocaleLowerCase("pl")
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "");
-
-    const SELECTOR =
-        "main h1, main h2, main h3, main h4, main h5, main h6, main p, main li, " +
-        "section h1, section h2, section h3, section h4, section h5, section h6, section p, section li, " +
-        "article h1, article h2, article h3, article h4, article p, article li";
-
-    // =========================================
-    // OTWIERANIE I ZAMYKANIE
-    // =========================================
-
-    toggle.addEventListener("click", () => {
-        box.classList.add("active");
-        input.focus();
-    });
-
-    close.addEventListener("click", () => {
-        box.classList.remove("active");
-    });
-
-    document.addEventListener("keydown", event => {
-
-        if ((event.ctrlKey || event.metaKey) &&
-            event.key.toLowerCase() === "f") {
-
-            event.preventDefault();
-            box.classList.add("active");
-            input.focus();
-        }
-
-        if (event.key === "Escape") {
-            box.classList.remove("active");
-        }
-
-    });
-
-    // =========================================
-    // POBIERANIE WSZYSTKICH PODSTRON
-    // =========================================
-
-    async function loadPages() {
-
-        results.textContent = "Indeksowanie stron...";
-
-        const responses = await Promise.all(
-            PAGES.map(async page => {
-
-                try {
-
-                    const url = new URL(page, location.origin + BASE);
-
-                    const response = await fetch(url.href);
-
-                    if (!response.ok) {
-                        throw new Error("HTTP " + response.status);
-                    }
-
-                    const html = await response.text();
-
-                    const doc = new DOMParser().parseFromString(
-                        html,
-                        "text/html"
-                    );
-
-                    const elements = doc.querySelectorAll(SELECTOR);
-
-                    const fragments = [];
-
-                    elements.forEach(element => {
-
-                        const text = element.textContent.trim();
-
-                        if (text.length < 3) return;
-
-                        fragments.push({
-                            text: text,
-                            id: element.id || ""
-                        });
-
-                    });
-
-                    return {
-                        page: url.href,
-                        title: doc.title || page,
-                        fragments: fragments
-                    };
-
-                } catch (error) {
-
-                    console.error("Nie udało się pobrać:", page, error);
-
-                    return null;
-
-                }
-
-            })
-        );
-
-        database = responses.filter(Boolean);
-
-        loaded = true;
-
-        console.log("Indeks wyszukiwarki:", database);
-
-        search();
-
-    }
-
-    // =========================================
-    // WYSZUKIWANIE
-    // =========================================
-
-    function search() {
-
-        const query = input.value.trim();
-
-        results.replaceChildren();
-
-        if (query.length < 2) return;
-
-        if (!loaded) {
-            results.textContent = "Indeksowanie stron...";
-            return;
-        }
-
-        const normalizedQuery = normalize(query);
-
-        let count = 0;
-
-        database.forEach(page => {
-
-            page.fragments.forEach(fragment => {
-
-                if (!normalize(fragment.text).includes(normalizedQuery)) {
-                    return;
-                }
-
-                if (count >= 100) return;
-
-                const result = document.createElement("div");
-                result.className = "search-result";
-                result.tabIndex = 0;
-
-                const title = document.createElement("strong");
-                title.textContent = page.title;
-
-                const description = document.createElement("small");
-
-                const position = normalize(fragment.text)
-                    .indexOf(normalizedQuery);
-
-                const start = Math.max(0, position - 60);
-                const end = Math.min(
-                    fragment.text.length,
-                    position + query.length + 100
-                );
-
-                description.textContent =
-                    "..." + fragment.text.substring(start, end) + "...";
-
-                result.append(title, description);
-
-                // ZAPISANIE WYNIKU
-
-                function openResult() {
-
-                    sessionStorage.setItem(
-                        "insolutions-search",
-                        JSON.stringify({
-                            text: fragment.text,
-                            query: query,
-                            page: page.page,
-                            id: fragment.id
-                        })
-                    );
-
-                    location.assign(page.page);
-
-                }
-
-                result.addEventListener("click", openResult);
-
-                result.addEventListener("keydown", event => {
-
-                    if (event.key === "Enter") {
-                        openResult();
-                    }
-
-                });
-
-                results.appendChild(result);
-
-                count++;
-
-            });
-
-        });
-
-        if (count === 0) {
-            results.textContent = "Nie znaleziono wyników.";
-        }
-
-    }
-
-    input.addEventListener("input", search);
-
-    // =========================================
-    // PRZEJŚCIE DO ZNALEZIONEGO TEKSTU
-    // =========================================
-
-    function restoreSearch() {
-
-        let saved;
-
-        try {
-
-            saved = JSON.parse(
-                sessionStorage.getItem("insolutions-search")
-            );
-
-        } catch (error) {
-            return;
-        }
-
-        if (!saved || !saved.query) return;
-
-        // Nie usuwamy zapisu, jeśli użytkownik jest na innej stronie.
-        if (location.href.split("#")[0] !== saved.page) return;
-
-        sessionStorage.removeItem("insolutions-search");
-
-        const query = normalize(saved.query);
-
-        const elements = Array.from(
-            document.querySelectorAll(SELECTOR)
-        );
-
-        // Najpierw szukamy dokładnie tego fragmentu,
-        // który został kliknięty w wynikach.
-
-        let target = elements.find(element =>
-            normalize(element.textContent.trim()) ===
-            normalize(saved.text)
-        );
-
-        // Jeśli tekst uległ zmianie, szukamy elementu z frazą.
-
-        if (!target) {
-
-            target = elements.find(element =>
-                normalize(element.textContent).includes(query)
-            );
-
-        }
-
-        if (!target) {
-
-            console.error("Nie odnaleziono wyniku na stronie.");
-            return;
-
-        }
-
-        // Przewinięcie do właściwego miejsca.
-
-        target.scrollIntoView({
-            behavior: "smooth",
-            block: "center"
-        });
-
-        // =====================================
-        // PODŚWIETLENIE FRAZY
-        // =====================================
-
-        const walker = document.createTreeWalker(
-            target,
-            NodeFilter.SHOW_TEXT
-        );
-
-        const nodes = [];
-        let node;
-
-        while ((node = walker.nextNode())) {
-            nodes.push(node);
-        }
-
-        let normalizedText = "";
-        const positions = [];
-
-        nodes.forEach(textNode => {
-
-            const value = textNode.textContent;
-
-            for (let i = 0; i < value.length; i++) {
-
-                const chars = normalize(value[i]);
-
-                for (let j = 0; j < chars.length; j++) {
-
-                    positions.push({
-                        node: textNode,
-                        offset: i
-                    });
-
-                }
-
-                normalizedText += chars;
-
-            }
-
-        });
-
-        const position = normalizedText.indexOf(query);
-
-        if (position === -1) return;
-
-        const start = positions[position];
-        const end = positions[position + query.length - 1];
-
-        if (!start || !end) return;
-
-        const range = document.createRange();
-
-        range.setStart(start.node, start.offset);
-        range.setEnd(end.node, end.offset + 1);
-
-        const mark = document.createElement("mark");
-
-        mark.className = "search-highlight";
-
-        try {
-
-            range.surroundContents(mark);
-
-        } catch (error) {
-
-            console.warn("Nie udało się podświetlić frazy:", error);
-
-        }
-
-        setTimeout(() => {
-
-            (mark.isConnected ? mark : target).scrollIntoView({
-                behavior: "smooth",
-                block: "center"
-            });
-
-        }, 300);
-
-    }
-
-    // =========================================
-    // URUCHOMIENIE
-    // =========================================
-
-    restoreSearch();
-    loadPages();
-
-});
-
-
-    
-</script>
 </body>
 </html>
