@@ -1604,7 +1604,8 @@ backToTop.addEventListener("click", function() {
 </script>
 <script>
 
-document.addEventListener("DOMContentLoaded", () => {
+
+document.addEventListener("DOMContentLoaded", function () {
 
     const PAGES = [
         "index.html",
@@ -1622,32 +1623,34 @@ document.addEventListener("DOMContentLoaded", () => {
     const close = document.getElementById("search-close");
     const results = document.getElementById("search-results");
 
-    if (!toggle || !box || !input || !close || !results) return;
+    if (!toggle || !box || !input || !close || !results) {
+        console.error("Nie znaleziono elementów wyszukiwarki!");
+        return;
+    }
 
-    let pages = [];
+    let database = [];
     let loaded = false;
 
-    const normalize = text =>
-        text.toLowerCase()
+    function normalize(text) {
+        return text.toLowerCase()
             .normalize("NFD")
             .replace(/[\u0300-\u036f]/g, "");
+    }
 
-    // Otwieranie wyszukiwarki
+    // OTWIERANIE WYSZUKIWARKI
 
-    toggle.addEventListener("click", () => {
+    toggle.addEventListener("click", function () {
         box.classList.add("active");
         input.focus();
     });
 
-    // Zamykanie
+    // ZAMYKANIE
 
-    close.addEventListener("click", () => {
+    close.addEventListener("click", function () {
         box.classList.remove("active");
     });
 
-    // Skrót CTRL + F
-
-    document.addEventListener("keydown", event => {
+    document.addEventListener("keydown", function (event) {
 
         if ((event.ctrlKey || event.metaKey) &&
             event.key.toLowerCase() === "f") {
@@ -1663,20 +1666,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
     });
 
-    // Pobieranie wszystkich podstron
+    // POBIERANIE PODSTRON
 
     async function loadPages() {
 
         results.textContent = "Ładowanie stron...";
 
-        const loadedPages = await Promise.all(
-            PAGES.map(async page => {
+        const pages = [...new Set(PAGES)];
+
+        const responses = await Promise.all(
+            pages.map(async page => {
 
                 try {
 
-                    const response = await fetch(page);
+                    const url = new URL(page, window.location.href);
+                    const response = await fetch(url.href);
 
-                    if (!response.ok) return null;
+                    if (!response.ok) {
+                        throw new Error("HTTP " + response.status);
+                    }
 
                     const html = await response.text();
 
@@ -1686,35 +1694,49 @@ document.addEventListener("DOMContentLoaded", () => {
                     );
 
                     const elements = doc.querySelectorAll(
-                        "main p, main h1, main h2, main h3, main h4, main li, " +
-                        "section p, section h1, section h2, section h3, section h4, section li, " +
-                        "article p, article h2, article h3, article h4, article li"
+                        "main h1, main h2, main h3, main h4, main p, main li, " +
+                        "section h1, section h2, section h3, section h4, section p, section li, " +
+                        "article h1, article h2, article h3, article h4, article p, article li"
                     );
 
+                    const fragments = [];
+
+                    elements.forEach(element => {
+
+                        const text = element.textContent.trim();
+
+                        if (text.length > 2) {
+                            fragments.push(text);
+                        }
+
+                    });
+
                     return {
-                        page,
+                        page: url.href,
                         title: doc.title || page,
-                        fragments: Array.from(elements)
-                            .map(element => element.textContent.trim())
-                            .filter(text => text.length > 2)
+                        fragments: fragments
                     };
 
                 } catch (error) {
-                    console.error("Błąd:", page, error);
+
+                    console.error("Błąd pobierania:", page, error);
                     return null;
+
                 }
 
             })
         );
 
-        pages = loadedPages.filter(Boolean);
+        database = responses.filter(Boolean);
         loaded = true;
+
+        console.log("Zaindeksowane strony:", database);
 
         search();
 
     }
 
-    // Wyszukiwanie
+    // WYSZUKIWANIE
 
     function search() {
 
@@ -1733,13 +1755,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
         let count = 0;
 
-        pages.forEach(page => {
+        database.forEach(page => {
 
             page.fragments.forEach(fragment => {
 
-                const normalizedText = normalize(fragment);
-
-                if (!normalizedText.includes(normalizedQuery)) return;
+                if (!normalize(fragment).includes(normalizedQuery)) {
+                    return;
+                }
 
                 const result = document.createElement("div");
                 result.className = "search-result";
@@ -1753,7 +1775,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 result.append(title, description);
 
-                const open = () => {
+                function openResult() {
 
                     sessionStorage.setItem(
                         "insolutions-search",
@@ -1763,13 +1785,16 @@ document.addEventListener("DOMContentLoaded", () => {
                         })
                     );
 
-                    location.href = page;
-                };
+                    window.location.assign(page.page);
 
-                result.addEventListener("click", open);
+                }
 
-                result.addEventListener("keydown", event => {
-                    if (event.key === "Enter") open();
+                result.addEventListener("click", openResult);
+
+                result.addEventListener("keydown", function (event) {
+                    if (event.key === "Enter") {
+                        openResult();
+                    }
                 });
 
                 results.appendChild(result);
@@ -1780,7 +1805,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         });
 
-        if (!count) {
+        if (count === 0) {
             results.textContent = "Nie znaleziono wyników.";
         }
 
@@ -1788,7 +1813,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     input.addEventListener("input", search);
 
-    // Podświetlanie znalezionego tekstu
+    // PRZYWRACANIE WYSZUKIWANIA I PODŚWIETLANIE
 
     function restoreSearch() {
 
@@ -1798,68 +1823,119 @@ document.addEventListener("DOMContentLoaded", () => {
             saved = JSON.parse(
                 sessionStorage.getItem("insolutions-search")
             );
-        } catch {
+        } catch (error) {
             return;
         }
 
-        if (!saved) return;
+        if (!saved || !saved.text || !saved.query) return;
 
         sessionStorage.removeItem("insolutions-search");
 
+        const expected = normalize(saved.text);
+        const query = normalize(saved.query);
+
         const elements = document.querySelectorAll(
-            "main p, main h1, main h2, main h3, main h4, main li, " +
-            "section p, section h1, section h2, section h3, section h4, section li, " +
-            "article p, article h2, article h3, article h4, article li"
+            "main h1, main h2, main h3, main h4, main p, main li, " +
+            "section h1, section h2, section h3, section h4, section p, section li, " +
+            "article h1, article h2, article h3, article h4, article p, article li"
         );
 
         const target = Array.from(elements).find(element =>
-            element.textContent.trim() === saved.text
+            normalize(element.textContent.trim()) === expected
         );
 
-        if (!target) return;
+        if (!target) {
+            console.error("Nie znaleziono tekstu:", saved.text);
+            return;
+        }
 
         const walker = document.createTreeWalker(
             target,
             NodeFilter.SHOW_TEXT
         );
 
-        const node = walker.nextNode();
+        const nodes = [];
+        let node;
 
-        if (!node) return;
+        while ((node = walker.nextNode())) {
+            nodes.push(node);
+        }
 
-        const normalized = normalize(node.textContent);
-        const position = normalized.indexOf(normalize(saved.query));
+        let normalizedText = "";
+        const positions = [];
 
-        if (position < 0) return;
+        nodes.forEach(textNode => {
+
+            const value = textNode.textContent;
+
+            for (let i = 0; i < value.length; i++) {
+
+                const chars = normalize(value[i]);
+
+                for (let j = 0; j < chars.length; j++) {
+                    positions.push({
+                        node: textNode,
+                        offset: i
+                    });
+                }
+
+                normalizedText += chars;
+
+            }
+
+        });
+
+        const position = normalizedText.indexOf(query);
+
+        if (position === -1) {
+            target.scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+            return;
+        }
+
+        const start = positions[position];
+        const end = positions[position + query.length - 1];
+
+        if (!start || !end) return;
 
         const range = document.createRange();
 
-        range.setStart(node, position);
-        range.setEnd(node, position + saved.query.length);
+        range.setStart(start.node, start.offset);
+        range.setEnd(end.node, end.offset + 1);
 
         const mark = document.createElement("mark");
         mark.className = "search-highlight";
 
         try {
+
             range.surroundContents(mark);
 
-            setTimeout(() => {
-                mark.scrollIntoView({
-                    behavior: "smooth",
-                    block: "center"
-                });
-            }, 300);
-
         } catch (error) {
-            target.scrollIntoView({ behavior: "smooth" });
+
+            console.error("Błąd podświetlania:", error);
+
         }
 
+        setTimeout(function () {
+
+            (mark.isConnected ? mark : target).scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+
+        }, 500);
+
     }
+
+    // START
 
     restoreSearch();
     loadPages();
 
 });
+
     
 </script>
 </body>
