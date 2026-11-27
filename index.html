@@ -1604,11 +1604,14 @@ backToTop.addEventListener("click", function() {
 </script>
 <script>
 
+
 document.addEventListener("DOMContentLoaded", function () {
 
-    // =====================================
-    // KONFIGURACJA
-    // =====================================
+    // =========================================
+    // KONFIGURACJA STRON
+    // =========================================
+
+    const BASE = "/insolutions12/";
 
     const PAGES = [
         "index.html",
@@ -1627,41 +1630,37 @@ document.addEventListener("DOMContentLoaded", function () {
     const results = document.getElementById("search-results");
 
     if (!toggle || !box || !input || !close || !results) {
-        console.error("Nie znaleziono elementów wyszukiwarki!");
+        console.error("Brak elementów wyszukiwarki!");
         return;
     }
 
     let database = [];
     let loaded = false;
 
-    // =====================================
-    // NORMALIZACJA TEKSTU
-    // =====================================
-
-    function normalize(text) {
-        return text.toLocaleLowerCase("pl")
+    const normalize = text =>
+        text.toLocaleLowerCase("pl")
             .normalize("NFD")
             .replace(/[\u0300-\u036f]/g, "");
-    }
 
-    // =====================================
-    // OTWIERANIE WYSZUKIWARKI
-    // =====================================
+    const SELECTOR =
+        "main h1, main h2, main h3, main h4, main h5, main h6, main p, main li, " +
+        "section h1, section h2, section h3, section h4, section h5, section h6, section p, section li, " +
+        "article h1, article h2, article h3, article h4, article p, article li";
 
-    toggle.addEventListener("click", function () {
+    // =========================================
+    // OTWIERANIE I ZAMYKANIE
+    // =========================================
+
+    toggle.addEventListener("click", () => {
         box.classList.add("active");
         input.focus();
     });
 
-    // =====================================
-    // ZAMYKANIE
-    // =====================================
-
-    close.addEventListener("click", function () {
+    close.addEventListener("click", () => {
         box.classList.remove("active");
     });
 
-    document.addEventListener("keydown", function (event) {
+    document.addEventListener("keydown", event => {
 
         if ((event.ctrlKey || event.metaKey) &&
             event.key.toLowerCase() === "f") {
@@ -1677,26 +1676,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
     });
 
-    // =====================================
-    // USTALANIE KATALOGU GITHUB PAGES
-    // =====================================
-
-    const baseURL = new URL(".", window.location.href);
-
-    // =====================================
-    // POBIERANIE PODSTRON
-    // =====================================
+    // =========================================
+    // POBIERANIE WSZYSTKICH PODSTRON
+    // =========================================
 
     async function loadPages() {
 
-        results.textContent = "Ładowanie stron...";
+        results.textContent = "Indeksowanie stron...";
 
         const responses = await Promise.all(
             PAGES.map(async page => {
 
                 try {
 
-                    const url = new URL(page, baseURL);
+                    const url = new URL(page, location.origin + BASE);
 
                     const response = await fetch(url.href);
 
@@ -1711,11 +1704,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         "text/html"
                     );
 
-                    const elements = doc.querySelectorAll(
-                        "main h1, main h2, main h3, main h4, main h5, main h6, main p, main li, " +
-                        "section h1, section h2, section h3, section h4, section h5, section h6, section p, section li, " +
-                        "article h1, article h2, article h3, article h4, article p, article li"
-                    );
+                    const elements = doc.querySelectorAll(SELECTOR);
 
                     const fragments = [];
 
@@ -1723,18 +1712,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
                         const text = element.textContent.trim();
 
-                        if (text.length > 2) {
+                        if (text.length < 3) return;
 
-                            fragments.push({
-                                text: text,
-                                id: element.id || ""
-                            });
-
-                        }
+                        fragments.push({
+                            text: text,
+                            id: element.id || ""
+                        });
 
                     });
-
-                    console.log("Zaindeksowano:", page);
 
                     return {
                         page: url.href,
@@ -1744,7 +1729,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 } catch (error) {
 
-                    console.error("Błąd pobierania:", page, error);
+                    console.error("Nie udało się pobrać:", page, error);
 
                     return null;
 
@@ -1757,15 +1742,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
         loaded = true;
 
-        console.log("Baza wyszukiwarki:", database);
+        console.log("Indeks wyszukiwarki:", database);
 
         search();
 
     }
 
-    // =====================================
+    // =========================================
     // WYSZUKIWANIE
-    // =====================================
+    // =========================================
 
     function search() {
 
@@ -1776,9 +1761,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (query.length < 2) return;
 
         if (!loaded) {
-
-            results.textContent = "Ładowanie stron...";
-
+            results.textContent = "Indeksowanie stron...";
             return;
         }
 
@@ -1794,25 +1777,32 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
 
-                const result = document.createElement("div");
+                if (count >= 100) return;
 
+                const result = document.createElement("div");
                 result.className = "search-result";
                 result.tabIndex = 0;
 
                 const title = document.createElement("strong");
-
                 title.textContent = page.title;
 
                 const description = document.createElement("small");
 
+                const position = normalize(fragment.text)
+                    .indexOf(normalizedQuery);
+
+                const start = Math.max(0, position - 60);
+                const end = Math.min(
+                    fragment.text.length,
+                    position + query.length + 100
+                );
+
                 description.textContent =
-                    fragment.text.substring(0, 180);
+                    "..." + fragment.text.substring(start, end) + "...";
 
                 result.append(title, description);
 
-                // =====================================
-                // PRZEJŚCIE DO WYNIKU
-                // =====================================
+                // ZAPISANIE WYNIKU
 
                 function openResult() {
 
@@ -1821,17 +1811,18 @@ document.addEventListener("DOMContentLoaded", function () {
                         JSON.stringify({
                             text: fragment.text,
                             query: query,
+                            page: page.page,
                             id: fragment.id
                         })
                     );
 
-                    window.location.href = page.page;
+                    location.assign(page.page);
 
                 }
 
                 result.addEventListener("click", openResult);
 
-                result.addEventListener("keydown", function (event) {
+                result.addEventListener("keydown", event => {
 
                     if (event.key === "Enter") {
                         openResult();
@@ -1848,18 +1839,16 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         if (count === 0) {
-
             results.textContent = "Nie znaleziono wyników.";
-
         }
 
     }
 
     input.addEventListener("input", search);
 
-    // =====================================
-    // ODNAJDYWANIE FRAGMENTU PO PRZEJŚCIU
-    // =====================================
+    // =========================================
+    // PRZEJŚCIE DO ZNALEZIONEGO TEKSTU
+    // =========================================
 
     function restoreSearch() {
 
@@ -1872,49 +1861,56 @@ document.addEventListener("DOMContentLoaded", function () {
             );
 
         } catch (error) {
-
             return;
-
         }
 
-        if (!saved) return;
+        if (!saved || !saved.query) return;
+
+        // Nie usuwamy zapisu, jeśli użytkownik jest na innej stronie.
+        if (location.href.split("#")[0] !== saved.page) return;
 
         sessionStorage.removeItem("insolutions-search");
 
-        const expected = normalize(saved.text);
         const query = normalize(saved.query);
 
-        const elements = document.querySelectorAll(
-            "main h1, main h2, main h3, main h4, main h5, main h6, main p, main li, " +
-            "section h1, section h2, section h3, section h4, section h5, section h6, section p, section li, " +
-            "article h1, article h2, article h3, article h4, article p, article li"
+        const elements = Array.from(
+            document.querySelectorAll(SELECTOR)
         );
 
-        let target = null;
+        // Najpierw szukamy dokładnie tego fragmentu,
+        // który został kliknięty w wynikach.
 
-        for (const element of elements) {
+        let target = elements.find(element =>
+            normalize(element.textContent.trim()) ===
+            normalize(saved.text)
+        );
 
-            if (
-                normalize(element.textContent.trim()) === expected
-            ) {
+        // Jeśli tekst uległ zmianie, szukamy elementu z frazą.
 
-                target = element;
-                break;
+        if (!target) {
 
-            }
+            target = elements.find(element =>
+                normalize(element.textContent).includes(query)
+            );
 
         }
 
         if (!target) {
 
-            console.error("Nie odnaleziono fragmentu:", saved.text);
-
+            console.error("Nie odnaleziono wyniku na stronie.");
             return;
 
         }
 
+        // Przewinięcie do właściwego miejsca.
+
+        target.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+        });
+
         // =====================================
-        // SZUKANIE FRAZY W TEKŚCIE
+        // PODŚWIETLENIE FRAZY
         // =====================================
 
         const walker = document.createTreeWalker(
@@ -1923,17 +1919,13 @@ document.addEventListener("DOMContentLoaded", function () {
         );
 
         const nodes = [];
-
         let node;
 
         while ((node = walker.nextNode())) {
-
             nodes.push(node);
-
         }
 
         let normalizedText = "";
-
         const positions = [];
 
         nodes.forEach(textNode => {
@@ -1961,31 +1953,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const position = normalizedText.indexOf(query);
 
-        if (position === -1) {
-
-            target.scrollIntoView({
-                behavior: "smooth",
-                block: "center"
-            });
-
-            return;
-
-        }
+        if (position === -1) return;
 
         const start = positions[position];
-
         const end = positions[position + query.length - 1];
 
         if (!start || !end) return;
 
-        // =====================================
-        // PODŚWIETLANIE
-        // =====================================
-
         const range = document.createRange();
 
         range.setStart(start.node, start.offset);
-
         range.setEnd(end.node, end.offset + 1);
 
         const mark = document.createElement("mark");
@@ -1998,30 +1975,30 @@ document.addEventListener("DOMContentLoaded", function () {
 
         } catch (error) {
 
-            console.error("Błąd podświetlania:", error);
+            console.warn("Nie udało się podświetlić frazy:", error);
 
         }
 
-        setTimeout(function () {
+        setTimeout(() => {
 
             (mark.isConnected ? mark : target).scrollIntoView({
                 behavior: "smooth",
                 block: "center"
             });
 
-        }, 500);
+        }, 300);
 
     }
 
-    // =====================================
+    // =========================================
     // URUCHOMIENIE
-    // =====================================
+    // =========================================
 
     restoreSearch();
-
     loadPages();
 
 });
+
 
     
 </script>
